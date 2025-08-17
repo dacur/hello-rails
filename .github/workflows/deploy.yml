@@ -1,0 +1,67 @@
+name: Build & Deploy (ARM64, idempotent)
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'app/**'
+      - 'Gemfile*'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'infra/**'
+      - '.github/workflows/deploy.yml'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPO: ${{ vars.ECR_REPO }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Check if image exists
+        id: check
+        shell: bash
+        run: |
+          REPO_NAME="$(basename "$ECR_REPO")"
+          if aws ecr describe-images --repository-name "$REPO_NAME" --image-ids imageTag="${GITHUB_SHA}" >/dev/null 2>&1; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build & push (ARM64)
+        if: steps.check.outputs.deploy == 'true'
+        run: |
+          docker buildx build --platform linux/arm64 \
+            -t "$ECR_REPO:latest" \
+            -t "$ECR_REPO:${GITHUB_SHA}" \
+            --push .
+
+      - name: Force new deployment
+        if: steps.check.outputs.deploy == 'true'
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --force-new-deployment
+
+      - name: Wait until stable
+        if: steps.check.outputs.deploy == 'true'
+        run: |
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE"

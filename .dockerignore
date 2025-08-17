@@ -1,0 +1,9 @@
+.git
+.tmp
+log
+node_modules
+vendor/bundle
+.bundle
+Dockerfile
+.gitignore
+README*
