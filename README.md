@@ -2,11 +2,11 @@
 
 This is a minimal Ruby on Rails app containerized with Docker and deployed to AWS ECS Fargate using Terraform. A GitHub Actions workflow builds and deploys the app automatically whenever code is pushed to `main`.
 
-**⚠️ NOTE:** Before starting, be sure you understand what this code is doing because **you WILL incur AWS charges**! 💰  
+**NOTE:** Before starting, be sure you understand what this code is doing because **you WILL incur AWS charges**! 💰  
 
 Always run `./destroy.sh` when you are finished, and log into your AWS account to double-check that everything is cleaned up.  
 
-🚨 This project is provided **as-is, with no warranty or responsibility** for any AWS costs or resource usage you may incur. 🚨
+This project is provided 🚨 **as-is, with no warranty or responsibility** 🚨 for any AWS costs or resource usage you may incur.
 
 ---
 
